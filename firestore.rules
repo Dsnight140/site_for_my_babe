@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isCoupleMember(coupleId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/couples/$(coupleId))
+        && (
+          get(/databases/$(database)/documents/couples/$(coupleId)).data.partner1_uid == request.auth.uid
+          || get(/databases/$(database)/documents/couples/$(coupleId)).data.partner2_uid == request.auth.uid
+        );
+    }
+
+    function isGirl() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'girl';
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      // A joined account cannot silently move itself to another couple.
+      allow update: if isSignedIn() && request.auth.uid == userId
+        && (resource.data.coupleId == request.resource.data.coupleId
+          || resource.data.coupleId == null);
+      allow delete: if false;
+    }
+
+    match /couples/{coupleId} {
+      // Invite lookup before join + member access after
+      allow read: if isSignedIn() && (
+        resource.data.partner2_uid == null
+        || resource.data.partner1_uid == request.auth.uid
+        || resource.data.partner2_uid == request.auth.uid
+      );
+
+      allow create: if isSignedIn()
+        && request.resource.data.partner1_uid == request.auth.uid
+        && request.resource.data.partner2_uid == null;
+
+      allow update: if isSignedIn() && (
+        (
+          resource.data.partner2_uid == null
+          && request.resource.data.partner2_uid == request.auth.uid
+          && request.resource.data.partner1_uid == resource.data.partner1_uid
+        )
+        || (
+          isCoupleMember(coupleId)
+          && request.resource.data.partner1_uid == resource.data.partner1_uid
+          && request.resource.data.partner2_uid == resource.data.partner2_uid
+          // The shared cycle may only be written by the partner who chose the
+          // girl role. Other shared home fields remain editable by both.
+          && (
+            isGirl()
+            || (
+              !('cycle' in resource.data)
+              && !('cycle' in request.resource.data)
+            )
+            || (
+              'cycle' in resource.data
+              && 'cycle' in request.resource.data
+              && request.resource.data.cycle == resource.data.cycle
+            )
+          )
+          // A profile mirror is editable only by its owner.
+          && (
+            (!('partners' in resource.data)
+              && !('partners' in request.resource.data))
+            || (
+              !('partners' in resource.data)
+              && 'partners' in request.resource.data
+              && request.resource.data.partners.keys()
+                .hasOnly([request.auth.uid])
+            )
+            || (
+              'partners' in resource.data
+              && 'partners' in request.resource.data
+              && request.resource.data.partners.diff(resource.data.partners)
+                .affectedKeys().hasOnly([request.auth.uid])
+            )
+          )
+        )
+      );
+
+      allow delete: if false;
+
+      match /wishes/{wishId} {
+        allow read, write: if isCoupleMember(coupleId);
+      }
+
+      match /pigeons/{pigeonId} {
+        allow read: if isCoupleMember(coupleId);
+        // The sender identity comes from Firebase Auth, never from the UI.
+        allow create: if isCoupleMember(coupleId)
+          && request.resource.data.keys().hasOnly([
+            'id', 'content', 'sentAt', 'sentAtFallback', 'senderId', 'senderName'
+          ])
+          && request.resource.data.id == pigeonId
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.content.size() <= 1000
+          && request.resource.data.senderName is string;
+        allow update: if false;
+        // Opening consumes a letter; its author cannot delete it early.
+        allow delete: if isCoupleMember(coupleId)
+          && resource.data.senderId != request.auth.uid;
+      }
+    }
+  }
+}

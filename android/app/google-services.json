@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1029954504426",
+    "project_id": "my-love-bc018",
+    "storage_bucket": "my-love-bc018.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1029954504426:android:c519df156851f715b23993",
+        "android_client_info": {
+          "package_name": "com.couple.ours"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDA_n4M27LdJwEi5wWlSrvXl4czpACRRPc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
