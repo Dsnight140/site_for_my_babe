@@ -91,6 +91,10 @@ service cloud.firestore {
         allow read, write: if isCoupleMember(coupleId);
       }
 
+      match /photos/{photoId} {
+        allow read, write: if isCoupleMember(coupleId);
+      }
+
       match /pigeons/{pigeonId} {
         allow read: if isCoupleMember(coupleId);
         // The sender identity comes from Firebase Auth, never from the UI.

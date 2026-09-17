@@ -16,6 +16,14 @@ import 'screens/profile_setup_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/wishlist_screen.dart';
 import 'screens/mood_screen.dart';
+import 'screens/photos_screen.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  debugPrint('Handling a background message: ${message.messageId}');
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +32,7 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   } catch (e) {
     debugPrint('Firebase init failed: $e');
   }
@@ -133,6 +142,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     HomeScreen(),
     WishlistScreen(),
     MoodScreen(),
+    PhotosScreen(),
   ];
 
   @override
@@ -245,6 +255,13 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
             icon: '💭',
             label: 'Настрой',
             index: 2,
+            currentIndex: _currentIndex,
+            onTap: _onTap,
+          ),
+          _NavItem(
+            icon: '📸',
+            label: 'Фото',
+            index: 3,
             currentIndex: _currentIndex,
             onTap: _onTap,
           ),

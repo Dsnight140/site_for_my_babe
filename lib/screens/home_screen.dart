@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../theme/app_theme.dart';
 import '../widgets/particle_bg.dart';
 import '../widgets/neon_card.dart';
 import '../services/local_storage.dart';
 import 'mens_tracker_screen.dart';
 import 'pigeon_screen.dart';
+import 'mood_screen.dart';
 import 'profile_setup_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -118,13 +118,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   const SizedBox(height: 16),
                   _buildDaysCounter(),
                   const SizedBox(height: 24),
-                  _buildMiniCards(),
-                  const SizedBox(height: 12),
                   _buildQuickActions(),
-                  const SizedBox(height: 8),
-                  _buildAccountActions(),
                   const SizedBox(height: 24),
                   _buildMilestonesCard(),
+                  const SizedBox(height: 16),
+                  _buildBirthdayCard(),
                 ],
               ),
             ),
@@ -391,71 +389,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic);
   }
 
-  Widget _buildMiniCards() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildMiniCard(
-            emoji: '🎁',
-            title: 'Вишлист',
-            value: '${_storage.activeWishes.length}',
-            subtitle: 'желаний',
-            delay: 400,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildMiniCard(
-            emoji: '💭',
-            title: 'Настрой',
-            value: _storage.mood.myMood?.emoji ?? '—',
-            subtitle: _storage.mood.myMood?.label ?? 'не выбрано',
-            delay: 500,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildMiniCard({
-    required String emoji,
-    required String title,
-    required String value,
-    required String subtitle,
-    required int delay,
-  }) {
-    return NeonCard(
-      padding: const EdgeInsets.all(16),
-      borderRadius: 20,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(emoji, style: const TextStyle(fontSize: 24)),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              color: AppTheme.neonPinkLight,
-              fontSize: value.length <= 2 ? 28 : 22,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: AppTheme.textSecondary,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    )
-        .animate()
-        .fadeIn(delay: Duration(milliseconds: delay), duration: 500.ms)
-        .slideY(begin: 0.3, end: 0, curve: Curves.easeOutCubic);
-  }
-
   Widget _buildMilestonesCard() {
     final days = _storage.daysTogether;
     final milestones = [
@@ -573,129 +506,201 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildQuickActions() {
     final hasPigeon = _storage.hasUnreadPigeon;
-    return Row(
-      children: [
-        Expanded(
-          child: GestureDetector(
-            onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MensTrackerScreen())),
-            child: NeonCard(
-              padding: const EdgeInsets.all(14),
-              borderRadius: 18,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return SizedBox(
+      height: 180,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _buildMoodQuickCard()),
+          const SizedBox(width: 12),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PigeonScreen())),
+              child: Stack(
+                fit: StackFit.expand,
+                clipBehavior: Clip.none,
                 children: [
-                  const Text('🌸', style: TextStyle(fontSize: 22)),
-                  const SizedBox(height: 8),
-                  Text(
-                    _storage.isGirl ? 'Мой цикл' : 'Её цикл',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  NeonCard(
+                    padding: const EdgeInsets.all(14),
+                    borderRadius: 18,
+                    borderOpacity: hasPigeon ? 0.55 : 0.3,
+                    glowOpacity: hasPigeon ? 0.28 : 0.12,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(hasPigeon ? '💌' : '✉️',
+                            style: const TextStyle(fontSize: 22)),
+                        const SizedBox(height: 8),
+                        const Text('Голубь',
+                            style: TextStyle(fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 4),
+                        Text(
+                          hasPigeon
+                              ? 'Новое письмо!'
+                              : (_storage.canSendPigeonToday
+                                  ? '1 письмо в день'
+                                  : 'Уже отправлено'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: hasPigeon
+                                ? AppTheme.neonPinkLight
+                                : AppTheme.textSecondary,
+                            fontWeight:
+                                hasPigeon ? FontWeight.w600 : FontWeight.w400,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _storage.cycle.status(),
-                    style: const TextStyle(fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  if (hasPigeon)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: const BoxDecoration(
+                          color: AppTheme.neonPink,
+                          shape: BoxShape.circle,
+                        ),
+                      )
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scaleXY(begin: 1, end: 1.4, duration: 800.ms),
+                    ),
                 ],
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMoodQuickCard() {
+    final mine = _storage.mood.myMood;
+    final partner = _storage.mood.partnerMood;
+    final partnerName = _storage.partnerProfile?.displayName ?? 'Партнёр';
+
+    return SizedBox.expand(
+      child: GestureDetector(
+        onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const MoodScreen())),
+        child: NeonCard(
+          padding: const EdgeInsets.all(14),
+          borderRadius: 18,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('💭', style: TextStyle(fontSize: 22)),
+              const SizedBox(height: 8),
+              const Text('Настроения',
+                  style: TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              _moodLine('Моё', mine?.emoji ?? '—', mine?.label ?? 'Не выбрано'),
+              const SizedBox(height: 6),
+              _moodLine(partnerName, partner?.emoji ?? '—',
+                  partner?.label ?? 'Пока не выбрано'),
+            ],
+          ),
         ),
-        const SizedBox(width: 12),
+      ),
+    );
+  }
+
+  Widget _moodLine(String label, String emoji, String value) {
+    return Row(
+      children: [
+        Text(emoji, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 7),
         Expanded(
-          child: GestureDetector(
-            onTap: () => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => const PigeonScreen())),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                NeonCard(
-                  padding: const EdgeInsets.all(14),
-                  borderRadius: 18,
-                  borderOpacity: hasPigeon ? 0.55 : 0.3,
-                  glowOpacity: hasPigeon ? 0.28 : 0.12,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(hasPigeon ? '💌' : '✉️',
-                          style: const TextStyle(fontSize: 22)),
-                      const SizedBox(height: 8),
-                      const Text('Голубь',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
-                      const SizedBox(height: 4),
-                      Text(
-                        hasPigeon
-                            ? 'Новое письмо!'
-                            : (_storage.canSendPigeonToday
-                                ? '1 письмо в день'
-                                : 'Уже отправлено'),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: hasPigeon
-                              ? AppTheme.neonPinkLight
-                              : AppTheme.textSecondary,
-                          fontWeight:
-                              hasPigeon ? FontWeight.w600 : FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (hasPigeon)
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.neonPink,
-                        shape: BoxShape.circle,
-                      ),
-                    )
-                        .animate(onPlay: (c) => c.repeat(reverse: true))
-                        .scaleXY(begin: 1, end: 1.4, duration: 800.ms),
-                  ),
-              ],
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style:
+                      const TextStyle(color: AppTheme.textMuted, fontSize: 10)),
+              Text(value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: AppTheme.textSecondary, fontSize: 12)),
+            ],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildAccountActions() {
-    return Column(
-      children: [
-        TextButton(
-          onPressed: () {
-            HapticFeedback.selectionClick();
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const ProfileSetupScreen(isEditing: true),
+  Widget _buildBirthdayCard() {
+    final people = [
+      if (_storage.myProfile?.birthday != null)
+        (_storage.myProfile!, _storage.myProfile!.displayName),
+      if (_storage.partnerProfile?.birthday != null)
+        (_storage.partnerProfile!, _storage.partnerProfile!.displayName),
+    ];
+    if (people.isEmpty) return const SizedBox.shrink();
+
+    return NeonCard(
+      borderRadius: 22,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🎂', style: TextStyle(fontSize: 26)),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text('Ближайшие дни рождения',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...people.asMap().entries.map((entry) {
+            final person = entry.value;
+            final birthday = person.$1.birthday!;
+            final next =
+                DateTime(DateTime.now().year, birthday.month, birthday.day);
+            final normalized = next.isBefore(DateTime.now())
+                ? DateTime(
+                    DateTime.now().year + 1, birthday.month, birthday.day)
+                : next;
+            final days = normalized.difference(DateTime.now()).inDays;
+            return Container(
+              margin: EdgeInsets.only(
+                  bottom: entry.key == people.length - 1 ? 0 : 10),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.cardColorLight,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.neonPink.withOpacity(0.18)),
+              ),
+              child: Row(
+                children: [
+                  const Text('🎈', style: TextStyle(fontSize: 22)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(person.$2,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                  Text('через $days дн.\n${_formatDate(normalized)}',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                          color: AppTheme.neonPinkLight, fontSize: 12)),
+                ],
               ),
             );
-          },
-          child: const Text(
-            'Редактировать профиль',
-            style: TextStyle(color: AppTheme.neonPinkLight, fontSize: 13),
-          ),
-        ),
-        TextButton(
-          onPressed: () async {
-            HapticFeedback.selectionClick();
-            LocalStorage().clearCoupleId();
-            await FirebaseAuth.instance.signOut();
-          },
-          child: const Text(
-            'Выйти из аккаунта',
-            style: TextStyle(color: AppTheme.textMuted, fontSize: 13),
-          ),
-        ),
-      ],
-    );
+          }),
+        ],
+      ),
+    ).animate().fadeIn(delay: 700.ms);
   }
 
   String _formatDate(DateTime date) {

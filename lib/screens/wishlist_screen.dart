@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:uuid/uuid.dart';
 import '../theme/app_theme.dart';
 import '../widgets/neon_card.dart';
@@ -20,6 +21,7 @@ class _WishlistScreenState extends State<WishlistScreen>
     with SingleTickerProviderStateMixin {
   late LocalStorage _storage;
   WishCategory? _filterCategory;
+  String _filterOwner = 'all'; // 'all', 'mine', 'partner'
   late TabController _tabController;
   final _uuid = const Uuid();
 
@@ -59,6 +61,8 @@ class _WishlistScreenState extends State<WishlistScreen>
               children: [
                 _buildHeader(),
                 _buildTabs(),
+                const SizedBox(height: 8),
+                _buildOwnerFilter(),
                 _buildCategoryFilter(),
                 Expanded(
                   child: TabBarView(
@@ -130,11 +134,63 @@ class _WishlistScreenState extends State<WishlistScreen>
           dividerColor: Colors.transparent,
           labelColor: Colors.white,
           unselectedLabelColor: AppTheme.textSecondary,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          labelStyle:
+              const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           tabs: [
             Tab(text: '✨ Желания (${_storage.activeWishes.length})'),
             Tab(text: '✅ Исполнено (${_storage.completedWishes.length})'),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOwnerFilter() {
+    final partnerName = _storage.partnerProfile?.displayName ?? 'Её';
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Expanded(child: _ownerChip('all', 'Все')),
+          const SizedBox(width: 8),
+          Expanded(child: _ownerChip('mine', 'Мои')),
+          const SizedBox(width: 8),
+          Expanded(child: _ownerChip('partner', partnerName)),
+        ],
+      ),
+    );
+  }
+
+  Widget _ownerChip(String key, String label) {
+    final selected = _filterOwner == key;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _filterOwner = key);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.neonPink.withOpacity(0.2)
+              : AppTheme.cardColorLight,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected
+                ? AppTheme.neonPink.withOpacity(0.5)
+                : Colors.transparent,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? AppTheme.neonPinkLight : AppTheme.textSecondary,
+              fontSize: 12,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
         ),
       ),
     );
@@ -204,18 +260,30 @@ class _WishlistScreenState extends State<WishlistScreen>
       wishes = wishes.where((w) => w.category == _filterCategory).toList();
     }
 
+    final myUid = FirebaseAuth.instance.currentUser?.uid;
+    if (_filterOwner == 'mine') {
+      wishes = wishes.where((w) => w.creatorId == myUid).toList();
+    } else if (_filterOwner == 'partner') {
+      wishes = wishes
+          .where((w) => w.creatorId != null && w.creatorId != myUid)
+          .toList();
+    }
+
     if (wishes.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(completed ? '✅' : '✨',
-                style: const TextStyle(fontSize: 48)),
+            Text(completed ? '✅' : '✨', style: const TextStyle(fontSize: 48)),
             const SizedBox(height: 12),
             Text(
               completed
                   ? 'Пока ничего не исполнено'
-                  : 'Список желаний пуст\nДобавь первое! 💕',
+                  : _filterOwner == 'mine'
+                      ? 'Твоих желаний пока нет\nДобавь первое! 💕'
+                      : _filterOwner == 'partner'
+                          ? 'У неё пока нет желаний'
+                          : 'Список желаний пуст\nДобавь первое! 💕',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppTheme.textSecondary,
@@ -235,6 +303,11 @@ class _WishlistScreenState extends State<WishlistScreen>
   }
 
   Widget _buildWishTile(WishItem wish, int index) {
+    final myUid = FirebaseAuth.instance.currentUser?.uid;
+    final isMine = wish.creatorId == myUid;
+    final isPartner = wish.creatorId != null && wish.creatorId != myUid;
+    final partnerName = _storage.partnerProfile?.displayName ?? 'Половинка';
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Slidable(
@@ -328,20 +401,53 @@ class _WishlistScreenState extends State<WishlistScreen>
                         ),
                       ],
                       const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppTheme.cardColorLight,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${wish.category.emoji} ${wish.category.label}',
-                          style: const TextStyle(
-                            color: AppTheme.textMuted,
-                            fontSize: 11,
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppTheme.cardColorLight,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${wish.category.emoji} ${wish.category.label}',
+                              style: const TextStyle(
+                                color: AppTheme.textMuted,
+                                fontSize: 11,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (isMine || isPartner) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isMine
+                                    ? AppTheme.neonPink.withOpacity(0.1)
+                                    : AppTheme.neonPurple.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: isMine
+                                      ? AppTheme.neonPink.withOpacity(0.3)
+                                      : AppTheme.neonPurple.withOpacity(0.3),
+                                  width: 0.5,
+                                ),
+                              ),
+                              child: Text(
+                                isMine ? '👤 Моё' : '👤 $partnerName',
+                                style: TextStyle(
+                                  color: isMine
+                                      ? AppTheme.neonPinkLight
+                                      : AppTheme.neonPurple,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ],
                   ),
@@ -355,7 +461,9 @@ class _WishlistScreenState extends State<WishlistScreen>
             ),
           ),
         ),
-      ).animate().fadeIn(delay: Duration(milliseconds: 50 * index), duration: 400.ms)
+      )
+          .animate()
+          .fadeIn(delay: Duration(milliseconds: 50 * index), duration: 400.ms)
           .slideX(begin: 0.1, end: 0, curve: Curves.easeOutCubic),
     );
   }
@@ -379,9 +487,8 @@ class _WishlistScreenState extends State<WishlistScreen>
         ),
         child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
       ),
-    )
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .scaleXY(begin: 1.0, end: 1.06, duration: 1500.ms, curve: Curves.easeInOut);
+    ).animate(onPlay: (c) => c.repeat(reverse: true)).scaleXY(
+        begin: 1.0, end: 1.06, duration: 1500.ms, curve: Curves.easeInOut);
   }
 
   void _showAddWishSheet() {
@@ -461,9 +568,8 @@ class _WishlistScreenState extends State<WishlistScreen>
                                 ? Colors.white
                                 : AppTheme.textSecondary,
                             fontSize: 13,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.w400,
+                            fontWeight:
+                                isSelected ? FontWeight.w600 : FontWeight.w400,
                           ),
                         ),
                       ),

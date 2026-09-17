@@ -19,7 +19,6 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
   late AnimationController _heartbeatCtrl;
   late AnimationController _particleCtrl;
   MoodType? _selectedMood;
-  bool _showPartnerView = false;
 
   @override
   void initState() {
@@ -118,8 +117,8 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
               GestureDetector(
                 onTap: () => Navigator.pop(ctx),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 32, vertical: 14),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                   decoration: BoxDecoration(
                     gradient: AppTheme.neonGradient,
                     borderRadius: BorderRadius.circular(20),
@@ -142,7 +141,10 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
               ),
             ],
           ),
-        ).animate().scale(begin: const Offset(0.8, 0.8), duration: 400.ms, curve: Curves.elasticOut),
+        ).animate().scale(
+            begin: const Offset(0.8, 0.8),
+            duration: 400.ms,
+            curve: Curves.elasticOut),
       ),
     );
   }
@@ -166,28 +168,17 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                 children: [
                   _buildHeader(),
                   const SizedBox(height: 20),
-                  _buildToggle(),
+                  _buildMoodSummary(),
                   const SizedBox(height: 20),
-                  AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder: (child, anim) => FadeTransition(
-                      opacity: anim,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 0.05),
-                          end: Offset.zero,
-                        ).animate(anim),
-                        child: child,
-                      ),
-                    ),
-                    child: _showPartnerView
-                        ? _buildPartnerView()
-                        : _buildMyMoodGrid(),
-                  ),
+                  const Text('Моё настроение',
+                      style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 10),
+                  _buildMyMoodGrid(),
                   const SizedBox(height: 20),
-                  if (!_showPartnerView) _buildCurrentMoodCard(),
+                  _buildPartnerView(),
                 ],
               ),
             ),
@@ -220,55 +211,41 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
     ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1, end: 0);
   }
 
-  Widget _buildToggle() {
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.neonPink.withOpacity(0.15)),
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _toggleBtn('Моё', false)),
-          Expanded(child: _toggleBtn('Её/его', true)),
-        ],
-      ),
+  Widget _buildMoodSummary() {
+    final mine = _storage.mood.myMood;
+    final partner = _storage.mood.partnerMood;
+    final partnerName = _storage.partnerProfile?.displayName ?? 'Партнёр';
+    return Row(
+      children: [
+        Expanded(child: _summaryCard('Моё', mine, 'Выбери своё настроение')),
+        const SizedBox(width: 12),
+        Expanded(child: _summaryCard(partnerName, partner, 'Пока не выбрано')),
+      ],
     );
   }
 
-  Widget _toggleBtn(String label, bool isPartner) {
-    final active = _showPartnerView == isPartner;
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        setState(() => _showPartnerView = isPartner);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        margin: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          gradient: active ? AppTheme.neonGradient : null,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: active
-              ? [
-                  BoxShadow(
-                    color: AppTheme.neonPink.withOpacity(0.3),
-                    blurRadius: 10,
-                  ),
-                ]
-              : [],
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: active ? Colors.white : AppTheme.textSecondary,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w400,
-              fontSize: 14,
-            ),
-          ),
-        ),
+  Widget _summaryCard(String title, MoodType? mood, String emptyLabel) {
+    return NeonCard(
+      padding: const EdgeInsets.all(14),
+      borderRadius: 18,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppTheme.textMuted, fontSize: 11)),
+          const SizedBox(height: 8),
+          Text(mood?.emoji ?? '—', style: const TextStyle(fontSize: 28)),
+          const SizedBox(height: 5),
+          Text(mood?.label ?? emptyLabel,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600)),
+        ],
       ),
     );
   }
@@ -341,8 +318,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(mood.emoji,
-                    style: TextStyle(
-                        fontSize: isSelected ? 30 : 26)),
+                    style: TextStyle(fontSize: isSelected ? 30 : 26)),
                 if (isSelected)
                   Container(
                     width: 20,
@@ -351,8 +327,8 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                       shape: BoxShape.circle,
                       gradient: AppTheme.neonGradient,
                     ),
-                    child: const Icon(Icons.check, size: 12,
-                        color: Colors.white),
+                    child:
+                        const Icon(Icons.check, size: 12, color: Colors.white),
                   ),
               ],
             ),
@@ -362,9 +338,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                 Text(
                   mood.label,
                   style: TextStyle(
-                    color: isSelected
-                        ? Colors.white
-                        : AppTheme.textPrimary,
+                    color: isSelected ? Colors.white : AppTheme.textPrimary,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -372,9 +346,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                 Text(
                   mood.subtitle,
                   style: TextStyle(
-                    color: isSelected
-                        ? Colors.white70
-                        : AppTheme.textMuted,
+                    color: isSelected ? Colors.white70 : AppTheme.textMuted,
                     fontSize: 11,
                   ),
                 ),
@@ -464,8 +436,8 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(28),
           border: Border.all(
             color: (isThinkingOfYou || isWantHug)
-                ? AppTheme.neonPink.withOpacity(
-                    0.3 + _heartbeatCtrl.value * 0.4)
+                ? AppTheme.neonPink
+                    .withOpacity(0.3 + _heartbeatCtrl.value * 0.4)
                 : AppTheme.neonPink.withOpacity(0.3),
             width: 1.5,
           ),
@@ -515,8 +487,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
           if (isThinkingOfYou || isWantHug) ...[
             const SizedBox(height: 16),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               decoration: BoxDecoration(
                 color: AppTheme.neonPink.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(20),
@@ -539,8 +510,8 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
             GestureDetector(
               onTap: _showLoveBomb,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 decoration: BoxDecoration(
                   gradient: AppTheme.neonGradient,
                   borderRadius: BorderRadius.circular(20),
@@ -565,67 +536,5 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
         ],
       ),
     );
-  }
-
-  Widget _buildCurrentMoodCard() {
-    if (_selectedMood == null) return const SizedBox.shrink();
-    return NeonCard(
-      borderRadius: 20,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Text(_selectedMood!.emoji,
-              style: const TextStyle(fontSize: 32)),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Моё сейчас',
-                  style: TextStyle(
-                    color: AppTheme.textMuted,
-                    fontSize: 12,
-                  ),
-                ),
-                GradientText(
-                  text: _selectedMood!.label,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  _selectedMood!.subtitle,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() => _selectedMood = null);
-              _storage.setMyMood(MoodType.resting);
-            },
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.cardColorLight,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.close, size: 16,
-                  color: AppTheme.textMuted),
-            ),
-          ),
-        ],
-      ),
-    )
-        .animate()
-        .fadeIn(duration: 400.ms)
-        .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic);
   }
 }

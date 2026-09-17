@@ -19,6 +19,7 @@ class WishItem {
   bool isCompleted;
   final DateTime createdAt;
   DateTime? completedAt;
+  String? creatorId;
 
   WishItem({
     required this.id,
@@ -28,6 +29,7 @@ class WishItem {
     this.isCompleted = false,
     required this.createdAt,
     this.completedAt,
+    this.creatorId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -38,6 +40,7 @@ class WishItem {
         'isCompleted': isCompleted,
         'createdAt': createdAt.toIso8601String(),
         'completedAt': completedAt?.toIso8601String(),
+        'creatorId': creatorId,
       };
 
   factory WishItem.fromJson(Map<String, dynamic> json) => WishItem(
@@ -53,5 +56,6 @@ class WishItem {
         completedAt: json['completedAt'] != null
             ? DateTime.parse(json['completedAt'])
             : null,
+        creatorId: json['creatorId'],
       );
 }

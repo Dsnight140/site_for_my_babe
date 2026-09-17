@@ -10,6 +10,7 @@ import '../models/mood_state.dart';
 import '../models/cycle_tracker.dart';
 import '../models/pigeon_message.dart';
 import '../models/user_profile.dart';
+import '../models/pair_photo.dart';
 import 'notification_service.dart';
 
 class LocalStorage extends ChangeNotifier {
@@ -29,6 +30,7 @@ class LocalStorage extends ChangeNotifier {
   MoodState _mood = const MoodState();
   CycleTracker _cycle = CycleTracker();
   List<PigeonMessage> _pigeons = [];
+  List<PairPhoto> _photos = [];
   DateTime? _lastPigeonSent;
   UserProfile? _myProfile;
   UserProfile? _partnerProfile;
@@ -39,6 +41,7 @@ class LocalStorage extends ChangeNotifier {
   MoodState get mood => _resolvedMood;
   CycleTracker get cycle => _cycle;
   List<PigeonMessage> get pigeons => List.unmodifiable(_pigeons);
+  List<PairPhoto> get photos => List.unmodifiable(_photos);
   DateTime? get lastPigeonSent => _lastPigeonSent;
   UserProfile? get myProfile => _myProfile;
   UserProfile? get partnerProfile => _partnerProfile;
@@ -98,7 +101,9 @@ class LocalStorage extends ChangeNotifier {
   String? _coupleId;
   final List<StreamSubscription> _subs = [];
   final Set<String> _knownPigeonIds = {};
+  final Set<String> _knownWishIds = {};
   bool _pigeonBootstrapDone = false;
+  bool _wishBootstrapDone = false;
   bool _moodBootstrapDone = false;
   String? _lastKnownPartnerMoodKey;
 
@@ -123,6 +128,9 @@ class LocalStorage extends ChangeNotifier {
     _pigeonBootstrapDone = false;
     _moodBootstrapDone = false;
     _knownPigeonIds.clear();
+    _knownWishIds.clear();
+    _wishBootstrapDone = false;
+    _photos = [];
     _setupFirestoreListeners();
   }
 
@@ -137,6 +145,9 @@ class LocalStorage extends ChangeNotifier {
     _pigeonBootstrapDone = false;
     _moodBootstrapDone = false;
     _knownPigeonIds.clear();
+    _knownWishIds.clear();
+    _wishBootstrapDone = false;
+    _photos = [];
   }
 
   void _cancelListeners() {
@@ -236,12 +247,22 @@ class LocalStorage extends ChangeNotifier {
     }
   }
 
-  void _setupFirestoreListeners() {
+  void _setupFirestoreListeners() async {
     if (!_isFirebaseReady || _coupleId == null) return;
     _cancelListeners();
     final db = FirebaseFirestore.instance;
     final coupleId = _coupleId!;
     final myUid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (myUid != null) {
+      final token = await NotificationService().getFcmToken();
+      if (token != null) {
+        await db
+            .collection('users')
+            .doc(myUid)
+            .set({'fcmToken': token}, SetOptions(merge: true));
+      }
+    }
 
     _subs.add(db.collection('couples').doc(coupleId).snapshots().listen((doc) {
       if (!doc.exists) return;
@@ -316,10 +337,40 @@ class LocalStorage extends ChangeNotifier {
         .doc(coupleId)
         .collection('wishes')
         .snapshots()
-        .listen((snapshot) {
-      _wishes =
+        .listen((snapshot) async {
+      final wishes =
           snapshot.docs.map((doc) => WishItem.fromJson(doc.data())).toList();
+      _wishes = wishes;
+      if (_wishBootstrapDone && myUid != null) {
+        for (final wish in wishes) {
+          if (!_knownWishIds.contains(wish.id) &&
+              wish.creatorId != null &&
+              wish.creatorId != myUid) {
+            await NotificationService().notifyPartnerWish(
+              wishId: wish.id,
+              partnerName: _partnerProfile?.displayName ?? 'Половинка',
+              wishTitle: wish.title,
+            );
+          }
+        }
+      }
+      _knownWishIds
+        ..clear()
+        ..addAll(wishes.map((wish) => wish.id));
+      _wishBootstrapDone = true;
       _saveWishes();
+      notifyListeners();
+    }));
+
+    _subs.add(db
+        .collection('couples')
+        .doc(coupleId)
+        .collection('photos')
+        .orderBy('uploadedAt', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+      _photos =
+          snapshot.docs.map((doc) => PairPhoto.fromJson(doc.data())).toList();
       notifyListeners();
     }));
 
@@ -404,6 +455,10 @@ class LocalStorage extends ChangeNotifier {
   }
 
   Future<void> addWish(WishItem wish) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null && wish.creatorId == null) {
+      wish.creatorId = uid;
+    }
     _wishes.add(wish);
     await _saveWishes();
     notifyListeners();
@@ -414,6 +469,32 @@ class LocalStorage extends ChangeNotifier {
           .collection('wishes')
           .doc(wish.id)
           .set(wish.toJson());
+    }
+  }
+
+  Future<void> addPhoto(PairPhoto photo) async {
+    _photos = [photo, ..._photos.where((item) => item.id != photo.id)];
+    notifyListeners();
+    if (_isFirebaseReady && _coupleId != null) {
+      await FirebaseFirestore.instance
+          .collection('couples')
+          .doc(_coupleId)
+          .collection('photos')
+          .doc(photo.id)
+          .set(photo.toJson());
+    }
+  }
+
+  Future<void> deletePhoto(String id) async {
+    _photos = _photos.where((photo) => photo.id != id).toList();
+    notifyListeners();
+    if (_isFirebaseReady && _coupleId != null) {
+      await FirebaseFirestore.instance
+          .collection('couples')
+          .doc(_coupleId)
+          .collection('photos')
+          .doc(id)
+          .delete();
     }
   }
 

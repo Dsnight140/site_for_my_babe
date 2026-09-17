@@ -182,8 +182,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           emoji: '👦',
                           label: 'Парень',
                           selected: _role == PartnerRole.guy,
-                          onTap: () =>
-                              setState(() => _role = PartnerRole.guy),
+                          onTap: () => setState(() => _role = PartnerRole.guy),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -192,8 +191,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           emoji: '👧',
                           label: 'Девушка',
                           selected: _role == PartnerRole.girl,
-                          onTap: () =>
-                              setState(() => _role = PartnerRole.girl),
+                          onTap: () => setState(() => _role = PartnerRole.girl),
                         ),
                       ),
                     ],
@@ -265,7 +263,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                     color: Colors.white, strokeWidth: 2),
                               )
                             : Text(
-                                widget.isEditing ? 'Сохранить' : 'Продолжить 💕',
+                                widget.isEditing
+                                    ? 'Сохранить'
+                                    : 'Продолжить 💕',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -275,6 +275,29 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                       ),
                     ),
                   ),
+                  if (widget.isEditing) ...[
+                    const SizedBox(height: 40),
+                    Center(
+                      child: TextButton(
+                        onPressed: () async {
+                          HapticFeedback.selectionClick();
+                          LocalStorage().clearCoupleId();
+                          await FirebaseAuth.instance.signOut();
+                          if (mounted) {
+                            Navigator.of(context)
+                                .popUntil((route) => route.isFirst);
+                          }
+                        },
+                        child: Text(
+                          'Выйти из аккаунта',
+                          style: TextStyle(
+                            color: Colors.redAccent.withOpacity(0.5),
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
