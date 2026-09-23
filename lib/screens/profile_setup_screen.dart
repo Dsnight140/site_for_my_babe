@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../utils/date_format.dart';
 import '../models/user_profile.dart';
 import '../services/local_storage.dart';
 import '../theme/app_theme.dart';
@@ -282,10 +283,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                         onPressed: () async {
                           HapticFeedback.selectionClick();
                           LocalStorage().clearCoupleId();
+                          final navigator = Navigator.of(context);
                           await FirebaseAuth.instance.signOut();
                           if (mounted) {
-                            Navigator.of(context)
-                                .popUntil((route) => route.isFirst);
+                            navigator.popUntil((route) => route.isFirst);
                           }
                         },
                         child: Text(
@@ -330,21 +331,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   String _formatDate(DateTime d) {
-    final months = [
-      'января',
-      'февраля',
-      'марта',
-      'апреля',
-      'мая',
-      'июня',
-      'июля',
-      'августа',
-      'сентября',
-      'октября',
-      'ноября',
-      'декабря',
-    ];
-    return '${d.day} ${months[d.month - 1]} ${d.year}';
+    return '${d.day} ${kMonthNames[d.month - 1]} ${d.year}';
   }
 }
 

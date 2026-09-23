@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/particle_bg.dart';
 import '../widgets/neon_card.dart';
 import '../services/local_storage.dart';
+import '../utils/date_format.dart';
 import 'mens_tracker_screen.dart';
 import 'pigeon_screen.dart';
 import 'mood_screen.dart';
@@ -704,20 +705,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   String _formatDate(DateTime date) {
-    final months = [
-      'января',
-      'февраля',
-      'марта',
-      'апреля',
-      'мая',
-      'июня',
-      'июля',
-      'августа',
-      'сентября',
-      'октября',
-      'ноября',
-      'декабря',
-    ];
-    return '${date.day} ${months[date.month - 1]} ${date.year}';
+    return '${date.day} ${kMonthNames[date.month - 1]} ${date.year}';
   }
 }

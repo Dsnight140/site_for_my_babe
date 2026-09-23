@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../utils/date_format.dart';
 import '../services/local_storage.dart';
 import '../models/cycle_tracker.dart';
 import '../theme/app_theme.dart';
@@ -283,20 +284,6 @@ class _MensTrackerScreenState extends State<MensTrackerScreen> {
   }
 
   String _fmt(DateTime d) {
-    final months = [
-      'января',
-      'февраля',
-      'марта',
-      'апреля',
-      'мая',
-      'июня',
-      'июля',
-      'августа',
-      'сентября',
-      'октября',
-      'ноября',
-      'декабря',
-    ];
-    return '${d.day} ${months[d.month - 1]} ${d.year}';
+    return '${d.day} ${kMonthNames[d.month - 1]} ${d.year}';
   }
 }

@@ -245,11 +245,50 @@ class _PairingScreenState extends State<PairingScreen> {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              const Text(
-                                'Отправь его своей половинке',
-                                style: TextStyle(
-                                    color: AppTheme.neonPinkLight,
-                                    fontSize: 13),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Отправь его своей половинке',
+                                    style: TextStyle(
+                                        color: AppTheme.neonPinkLight,
+                                        fontSize: 13),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () {
+                                      if (_myCode != null) {
+                                        Clipboard.setData(
+                                            ClipboardData(text: _myCode!));
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                            content: Text('Код скопирован ✅'),
+                                            backgroundColor:
+                                                AppTheme.neonPink,
+                                            behavior:
+                                                SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12)),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.neonPink
+                                            .withOpacity(0.15),
+                                        borderRadius:
+                                            BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(Icons.copy_outlined,
+                                          color: AppTheme.neonPinkLight,
+                                          size: 16),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),

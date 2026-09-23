@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Ours использует фото, чтобы сохранять ваши общие моменты.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Ours использует камеру, чтобы сохранять ваши моменты для двоих.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

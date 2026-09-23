@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Ours с Cloudinary",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": [
+        "--dart-define=CLOUDINARY_CLOUD_NAME=wla4lcbj",
+        "--dart-define=CLOUDINARY_UPLOAD_PRESET=my_love"
+      ]
+    }
+  ]
+}

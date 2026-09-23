@@ -5,12 +5,16 @@ class PairPhoto {
   final String url;
   final DateTime uploadedAt;
   final String uploadedBy;
+  final String? note;
+  final bool isDeleted;
 
   const PairPhoto({
     required this.id,
     required this.url,
     required this.uploadedAt,
     required this.uploadedBy,
+    this.note,
+    this.isDeleted = false,
   });
 
   factory PairPhoto.fromJson(Map<String, dynamic> json) => PairPhoto(
@@ -18,6 +22,8 @@ class PairPhoto {
         url: json['url'] as String,
         uploadedAt: _readDate(json['uploadedAt']) ?? DateTime.now(),
         uploadedBy: (json['uploadedBy'] as String?) ?? '',
+        note: json['note'] as String?,
+        isDeleted: json['isDeleted'] as bool? ?? false,
       );
 
   Map<String, dynamic> toJson() => {
@@ -25,6 +31,8 @@ class PairPhoto {
         'url': url,
         'uploadedAt': uploadedAt.toIso8601String(),
         'uploadedBy': uploadedBy,
+        'note': note,
+        'isDeleted': isDeleted,
       };
 
   static DateTime? _readDate(dynamic value) {

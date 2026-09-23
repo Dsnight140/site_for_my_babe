@@ -95,9 +95,22 @@ class NotificationService {
 
   Future<String?> getFcmToken() async {
     try {
-      return await FirebaseMessaging.instance.getToken();
+      final messaging = FirebaseMessaging.instance;
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        String? apnsToken;
+        for (var attempt = 0; attempt < 10; attempt++) {
+          apnsToken = await messaging.getAPNSToken();
+          if (apnsToken != null && apnsToken.isNotEmpty) break;
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+        }
+        if (apnsToken == null || apnsToken.isEmpty) {
+          debugPrint('APNs token is not available yet; FCM token skipped.');
+          return null;
+        }
+      }
+      return await messaging.getToken();
     } catch (e) {
-      debugPrint('FCM Token error: $e');
+      debugPrint('FCM token unavailable: $e');
       return null;
     }
   }

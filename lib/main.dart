@@ -217,22 +217,15 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
 
   Widget _buildNavBar() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+      margin: const EdgeInsets.fromLTRB(8, 0, 8, 20),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
-        color: AppTheme.cardColor,
-        borderRadius: BorderRadius.circular(32),
+        color: AppTheme.cardColor.withOpacity(0.96),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: AppTheme.neonPink.withOpacity(0.15),
+          color: AppTheme.dividerColor,
           width: 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.neonPink.withOpacity(0.15),
-            blurRadius: 24,
-            spreadRadius: -4,
-          ),
-        ],
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -252,7 +245,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
             onTap: _onTap,
           ),
           _NavItem(
-            icon: '💭',
+            icon: '☁️',
             label: 'Настрой',
             index: 2,
             currentIndex: _currentIndex,
@@ -302,7 +295,7 @@ class _NavItem extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
           gradient: isActive
               ? const LinearGradient(
@@ -311,7 +304,7 @@ class _NavItem extends StatelessWidget {
                   end: Alignment.bottomRight,
                 )
               : null,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: isActive
               ? [
                   BoxShadow(
@@ -325,15 +318,18 @@ class _NavItem extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(icon, style: const TextStyle(fontSize: 18)),
+            Text(icon, style: const TextStyle(fontSize: 20)),
             if (isActive) ...[
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],

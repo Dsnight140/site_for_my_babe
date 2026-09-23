@@ -20,6 +20,7 @@ class WishItem {
   final DateTime createdAt;
   DateTime? completedAt;
   String? creatorId;
+  String? recipientId;
 
   WishItem({
     required this.id,
@@ -30,6 +31,7 @@ class WishItem {
     required this.createdAt,
     this.completedAt,
     this.creatorId,
+    this.recipientId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -41,6 +43,7 @@ class WishItem {
         'createdAt': createdAt.toIso8601String(),
         'completedAt': completedAt?.toIso8601String(),
         'creatorId': creatorId,
+        'recipientId': recipientId,
       };
 
   factory WishItem.fromJson(Map<String, dynamic> json) => WishItem(
@@ -57,5 +60,6 @@ class WishItem {
             ? DateTime.parse(json['completedAt'])
             : null,
         creatorId: json['creatorId'],
+        recipientId: json['recipientId'],
       );
 }

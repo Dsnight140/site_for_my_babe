@@ -304,8 +304,9 @@ class _WishlistScreenState extends State<WishlistScreen>
 
   Widget _buildWishTile(WishItem wish, int index) {
     final myUid = FirebaseAuth.instance.currentUser?.uid;
-    final isMine = wish.creatorId == myUid;
-    final isPartner = wish.creatorId != null && wish.creatorId != myUid;
+    final recipientId = wish.recipientId ?? wish.creatorId;
+    final isRecipientMine = recipientId == myUid;
+    final hasRecipient = recipientId != null;
     final partnerName = _storage.partnerProfile?.displayName ?? 'Половинка';
 
     return Padding(
@@ -314,18 +315,61 @@ class _WishlistScreenState extends State<WishlistScreen>
         key: ValueKey(wish.id),
         endActionPane: ActionPane(
           motion: const DrawerMotion(),
+          extentRatio: 0.7,
           children: [
-            SlidableAction(
+            CustomSlidableAction(
+              onPressed: (_) {
+                HapticFeedback.mediumImpact();
+                _showWishSheet(existing: wish);
+              },
+              backgroundColor: AppTheme.cardColorLight,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.neonPurple.withOpacity(0.22),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.neonPurple),
+                ),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.edit_rounded, color: Colors.white, size: 22),
+                    SizedBox(height: 4),
+                    Text('Изменить',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ),
+            CustomSlidableAction(
               onPressed: (_) {
                 HapticFeedback.mediumImpact();
                 _storage.deleteWish(wish.id);
               },
-              backgroundColor: Colors.red.withOpacity(0.8),
-              foregroundColor: Colors.white,
-              icon: Icons.delete_rounded,
-              label: 'Удалить',
-              borderRadius: const BorderRadius.horizontal(
-                right: Radius.circular(20),
+              backgroundColor: AppTheme.cardColorLight,
+              padding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFC93D68).withOpacity(0.9),
+                  borderRadius: const BorderRadius.horizontal(
+                    right: Radius.circular(14),
+                  ),
+                ),
+                child: const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.delete_rounded, color: Colors.white, size: 22),
+                    SizedBox(height: 4),
+                    Text('Удалить',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
               ),
             ),
           ],
@@ -418,35 +462,43 @@ class _WishlistScreenState extends State<WishlistScreen>
                               ),
                             ),
                           ),
-                          if (isMine || isPartner) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: isMine
-                                    ? AppTheme.neonPink.withOpacity(0.1)
-                                    : AppTheme.neonPurple.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(
-                                  color: isMine
-                                      ? AppTheme.neonPink.withOpacity(0.3)
-                                      : AppTheme.neonPurple.withOpacity(0.3),
-                                  width: 0.5,
-                                ),
-                              ),
-                              child: Text(
-                                isMine ? '👤 Моё' : '👤 $partnerName',
-                                style: TextStyle(
-                                  color: isMine
-                                      ? AppTheme.neonPinkLight
-                                      : AppTheme.neonPurple,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: !hasRecipient
+                                  ? AppTheme.cardColorLight
+                                  : isRecipientMine
+                                      ? AppTheme.neonPink.withOpacity(0.1)
+                                      : AppTheme.neonPurple.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: !hasRecipient
+                                    ? AppTheme.dividerColor
+                                    : isRecipientMine
+                                        ? AppTheme.neonPink.withOpacity(0.3)
+                                        : AppTheme.neonPurple.withOpacity(0.3),
+                                width: 0.5,
                               ),
                             ),
-                          ],
+                            child: Text(
+                              !hasRecipient
+                                  ? 'Получатель не указан'
+                                  : isRecipientMine
+                                      ? 'Для меня'
+                                      : 'Для $partnerName',
+                              style: TextStyle(
+                                color: !hasRecipient
+                                    ? AppTheme.textMuted
+                                    : isRecipientMine
+                                        ? AppTheme.neonPinkLight
+                                        : AppTheme.neonPurple,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -491,11 +543,16 @@ class _WishlistScreenState extends State<WishlistScreen>
         begin: 1.0, end: 1.06, duration: 1500.ms, curve: Curves.easeInOut);
   }
 
-  void _showAddWishSheet() {
+  void _showAddWishSheet() => _showWishSheet();
+
+  void _showWishSheet({WishItem? existing}) {
     HapticFeedback.mediumImpact();
-    final titleCtrl = TextEditingController();
-    final noteCtrl = TextEditingController();
-    WishCategory selectedCat = WishCategory.gift;
+    final titleCtrl = TextEditingController(text: existing?.title);
+    final noteCtrl = TextEditingController(text: existing?.note);
+    WishCategory selectedCat = existing?.category ?? WishCategory.gift;
+    final myUid = FirebaseAuth.instance.currentUser?.uid;
+    String? selectedRecipientId =
+        existing?.recipientId ?? existing?.creatorId ?? myUid;
 
     showModalBottomSheet(
       context: context,
@@ -529,7 +586,9 @@ class _WishlistScreenState extends State<WishlistScreen>
                 ),
                 const SizedBox(height: 20),
                 GradientText(
-                  text: 'Новое желание ✨',
+                  text: existing == null
+                      ? 'Новое желание ✨'
+                      : 'Изменить желание ✨',
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 20),
@@ -576,6 +635,32 @@ class _WishlistScreenState extends State<WishlistScreen>
                     );
                   }).toList(),
                 ),
+                const SizedBox(height: 18),
+                Text('Для кого?',
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    _recipientChip(
+                      ctx,
+                      setSheetState,
+                      myUid,
+                      'Для меня',
+                      selectedRecipientId,
+                      (value) => selectedRecipientId = value,
+                    ),
+                    if (_storage.partnerProfile != null)
+                      _recipientChip(
+                        ctx,
+                        setSheetState,
+                        _storage.partnerProfile!.uid,
+                        'Для ${_storage.partnerProfile!.displayName}',
+                        selectedRecipientId,
+                        (value) => selectedRecipientId = value,
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -596,15 +681,23 @@ class _WishlistScreenState extends State<WishlistScreen>
                       onPressed: () {
                         if (titleCtrl.text.trim().isEmpty) return;
                         HapticFeedback.mediumImpact();
-                        _storage.addWish(WishItem(
-                          id: _uuid.v4(),
-                          title: titleCtrl.text.trim(),
-                          note: noteCtrl.text.trim().isEmpty
-                              ? null
-                              : noteCtrl.text.trim(),
-                          category: selectedCat,
-                          createdAt: DateTime.now(),
-                        ));
+                        final wish = existing ??
+                            WishItem(
+                              id: _uuid.v4(),
+                              title: '',
+                              createdAt: DateTime.now(),
+                            );
+                        wish.title = titleCtrl.text.trim();
+                        wish.note = noteCtrl.text.trim().isEmpty
+                            ? null
+                            : noteCtrl.text.trim();
+                        wish.category = selectedCat;
+                        wish.recipientId = selectedRecipientId;
+                        if (existing == null) {
+                          _storage.addWish(wish);
+                        } else {
+                          _storage.updateWish(wish);
+                        }
                         Navigator.pop(ctx);
                       },
                       style: ElevatedButton.styleFrom(
@@ -627,6 +720,40 @@ class _WishlistScreenState extends State<WishlistScreen>
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _recipientChip(
+    BuildContext context,
+    StateSetter setSheetState,
+    String? id,
+    String label,
+    String? selectedId,
+    void Function(String?) onSelected,
+  ) {
+    final selected = id != null && id == selectedId;
+    return GestureDetector(
+      onTap: id == null ? null : () => setSheetState(() => onSelected(id)),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+        decoration: BoxDecoration(
+          gradient: selected ? AppTheme.neonGradient : null,
+          color: selected ? null : AppTheme.cardColorLight,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? Colors.transparent : AppTheme.dividerColor,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : AppTheme.textSecondary,
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
       ),

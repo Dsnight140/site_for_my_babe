@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../services/local_storage.dart';
 import '../models/pigeon_message.dart';
@@ -202,7 +201,6 @@ class _PigeonScreenState extends State<PigeonScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
     final incoming = _storage.incomingPigeon;
     final outgoing = _storage.outgoingPendingPigeon;
     final partnerName =
@@ -348,7 +346,7 @@ class _PigeonScreenState extends State<PigeonScreen> {
           ),
           Positioned(
             right: 20,
-            bottom: 40,
+            bottom: 90,
             child: GestureDetector(
               onTap: _compose,
               child: Container(
@@ -371,8 +369,6 @@ class _PigeonScreenState extends State<PigeonScreen> {
                 .animate(onPlay: (c) => c.repeat(reverse: true))
                 .scaleXY(begin: 1.0, end: 1.05, duration: 1500.ms),
           ),
-          // silence unused warning
-          if (uid == null) const SizedBox.shrink(),
         ],
       ),
     );

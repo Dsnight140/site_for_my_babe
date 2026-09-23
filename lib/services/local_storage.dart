@@ -11,6 +11,7 @@ import '../models/cycle_tracker.dart';
 import '../models/pigeon_message.dart';
 import '../models/user_profile.dart';
 import '../models/pair_photo.dart';
+import '../models/memory_entry.dart';
 import 'notification_service.dart';
 
 class LocalStorage extends ChangeNotifier {
@@ -24,6 +25,7 @@ class LocalStorage extends ChangeNotifier {
   static const _keyCycle = 'cycle_info';
   static const _keyPigeons = 'pigeons';
   static const _keyLastPigeonSent = 'last_pigeon_sent';
+  static const _keyMemories = 'memories';
 
   DateTime? _startDate;
   List<WishItem> _wishes = [];
@@ -31,6 +33,7 @@ class LocalStorage extends ChangeNotifier {
   CycleTracker _cycle = CycleTracker();
   List<PigeonMessage> _pigeons = [];
   List<PairPhoto> _photos = [];
+  List<MemoryEntry> _memories = [];
   DateTime? _lastPigeonSent;
   UserProfile? _myProfile;
   UserProfile? _partnerProfile;
@@ -41,7 +44,11 @@ class LocalStorage extends ChangeNotifier {
   MoodState get mood => _resolvedMood;
   CycleTracker get cycle => _cycle;
   List<PigeonMessage> get pigeons => List.unmodifiable(_pigeons);
-  List<PairPhoto> get photos => List.unmodifiable(_photos);
+  List<PairPhoto> get photos =>
+      List.unmodifiable(_photos.where((photo) => !photo.isDeleted));
+  List<PairPhoto> get deletedPhotos =>
+      List.unmodifiable(_photos.where((photo) => photo.isDeleted));
+  List<MemoryEntry> get memories => List.unmodifiable(_memories);
   DateTime? get lastPigeonSent => _lastPigeonSent;
   UserProfile? get myProfile => _myProfile;
   UserProfile? get partnerProfile => _partnerProfile;
@@ -131,6 +138,7 @@ class LocalStorage extends ChangeNotifier {
     _knownWishIds.clear();
     _wishBootstrapDone = false;
     _photos = [];
+    _memories = [];
     _setupFirestoreListeners();
   }
 
@@ -148,6 +156,7 @@ class LocalStorage extends ChangeNotifier {
     _knownWishIds.clear();
     _wishBootstrapDone = false;
     _photos = [];
+    _memories = [];
   }
 
   void _cancelListeners() {
@@ -189,6 +198,12 @@ class LocalStorage extends ChangeNotifier {
 
     final lastPigeon = prefs.getString(_lastPigeonCacheKey);
     if (lastPigeon != null) _lastPigeonSent = DateTime.parse(lastPigeon);
+
+    final memoriesJson = prefs.getString(_keyMemories);
+    if (memoriesJson != null) {
+      final list = jsonDecode(memoriesJson) as List;
+      _memories = list.map((e) => MemoryEntry.fromJson(e)).toList();
+    }
 
     notifyListeners();
 
@@ -377,6 +392,19 @@ class LocalStorage extends ChangeNotifier {
     _subs.add(db
         .collection('couples')
         .doc(coupleId)
+        .collection('memories')
+        .orderBy('date', descending: true)
+        .snapshots()
+        .listen((snapshot) {
+      _memories =
+          snapshot.docs.map((doc) => MemoryEntry.fromJson(doc.data())).toList();
+      notifyListeners();
+      _saveMemories();
+    }));
+
+    _subs.add(db
+        .collection('couples')
+        .doc(coupleId)
         .collection('pigeons')
         .orderBy('sentAt', descending: true)
         .snapshots()
@@ -459,7 +487,24 @@ class LocalStorage extends ChangeNotifier {
     if (uid != null && wish.creatorId == null) {
       wish.creatorId = uid;
     }
+    if (wish.recipientId == null) wish.recipientId = wish.creatorId;
     _wishes.add(wish);
+    await _saveWishes();
+    notifyListeners();
+    if (_isFirebaseReady && _coupleId != null) {
+      await FirebaseFirestore.instance
+          .collection('couples')
+          .doc(_coupleId)
+          .collection('wishes')
+          .doc(wish.id)
+          .set(wish.toJson());
+    }
+  }
+
+  Future<void> updateWish(WishItem wish) async {
+    final index = _wishes.indexWhere((item) => item.id == wish.id);
+    if (index == -1) return;
+    _wishes[index] = wish;
     await _saveWishes();
     notifyListeners();
     if (_isFirebaseReady && _coupleId != null) {
@@ -486,6 +531,49 @@ class LocalStorage extends ChangeNotifier {
   }
 
   Future<void> deletePhoto(String id) async {
+    final index = _photos.indexWhere((photo) => photo.id == id);
+    if (index == -1) return;
+    _photos[index] = PairPhoto(
+      id: _photos[index].id,
+      url: _photos[index].url,
+      uploadedAt: _photos[index].uploadedAt,
+      uploadedBy: _photos[index].uploadedBy,
+      note: _photos[index].note,
+      isDeleted: true,
+    );
+    notifyListeners();
+    if (_isFirebaseReady && _coupleId != null) {
+      await FirebaseFirestore.instance
+          .collection('couples')
+          .doc(_coupleId)
+          .collection('photos')
+          .doc(id)
+          .update({'isDeleted': true});
+    }
+  }
+
+  Future<void> restorePhoto(String id) async {
+    final index = _photos.indexWhere((photo) => photo.id == id);
+    if (index == -1) return;
+    _photos[index] = PairPhoto(
+      id: _photos[index].id,
+      url: _photos[index].url,
+      uploadedAt: _photos[index].uploadedAt,
+      uploadedBy: _photos[index].uploadedBy,
+      note: _photos[index].note,
+    );
+    notifyListeners();
+    if (_isFirebaseReady && _coupleId != null) {
+      await FirebaseFirestore.instance
+          .collection('couples')
+          .doc(_coupleId)
+          .collection('photos')
+          .doc(id)
+          .update({'isDeleted': false});
+    }
+  }
+
+  Future<void> permanentlyDeletePhoto(String id) async {
     _photos = _photos.where((photo) => photo.id != id).toList();
     notifyListeners();
     if (_isFirebaseReady && _coupleId != null) {
@@ -496,6 +584,72 @@ class LocalStorage extends ChangeNotifier {
           .doc(id)
           .delete();
     }
+  }
+
+  Future<void> updatePhotoNote(String id, String? note) async {
+    final index = _photos.indexWhere((photo) => photo.id == id);
+    if (index == -1) return;
+    final photo = _photos[index];
+    _photos[index] = PairPhoto(
+      id: photo.id,
+      url: photo.url,
+      uploadedAt: photo.uploadedAt,
+      uploadedBy: photo.uploadedBy,
+      note: note,
+      isDeleted: photo.isDeleted,
+    );
+    notifyListeners();
+    if (_isFirebaseReady && _coupleId != null) {
+      await FirebaseFirestore.instance
+          .collection('couples')
+          .doc(_coupleId)
+          .collection('photos')
+          .doc(id)
+          .update({'note': note});
+    }
+  }
+
+  Future<void> addMemory(MemoryEntry memory) async {
+    memory = MemoryEntry(
+      id: memory.id,
+      title: memory.title,
+      note: memory.note,
+      date: memory.date,
+      photoUrl: memory.photoUrl,
+      creatorId: memory.creatorId ?? FirebaseAuth.instance.currentUser?.uid,
+      createdAt: memory.createdAt,
+    );
+    _memories = [memory, ..._memories.where((m) => m.id != memory.id)];
+    await _saveMemories();
+    notifyListeners();
+    if (_isFirebaseReady && _coupleId != null) {
+      await FirebaseFirestore.instance
+          .collection('couples')
+          .doc(_coupleId)
+          .collection('memories')
+          .doc(memory.id)
+          .set(memory.toJson());
+    }
+  }
+
+  Future<void> deleteMemory(String id) async {
+    _memories = _memories.where((m) => m.id != id).toList();
+    await _saveMemories();
+    notifyListeners();
+    if (_isFirebaseReady && _coupleId != null) {
+      await FirebaseFirestore.instance
+          .collection('couples')
+          .doc(_coupleId)
+          .collection('memories')
+          .doc(id)
+          .delete();
+    }
+  }
+
+  Future<void> _saveMemories() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+        _keyMemories, jsonEncode(_memories.map((m) => m.toJson()).toList()));
   }
 
   Future<void> toggleWish(String id) async {

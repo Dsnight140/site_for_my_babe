@@ -191,6 +191,17 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
   Widget _buildHeader() {
     return Row(
       children: [
+        if (Navigator.of(context).canPop()) ...[
+          IconButton(
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back_rounded),
+            color: AppTheme.textSecondary,
+            tooltip: 'Назад',
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          ),
+          const SizedBox(width: 4),
+        ],
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
